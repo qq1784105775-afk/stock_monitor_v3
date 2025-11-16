@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>自选股量化终端 v3.1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="layout">
+    <header class="topbar">
+      <div class="top-left">
+        <h1>自选股量化终端 v3.1</h1>
+        <div class="hint">
+          <span class="led green"></span> 买入　
+          <span class="led yellow"></span> 观望　
+          <span class="led red"></span> 卖出　
+          ｜ 强烈买入/卖出有语音播报
+        </div>
+      </div>
+      <div class="top-right">
+        <input id="searchBox" type="text" placeholder="输入股票代码/名称，如 002142.SZ / 宁波银行">
+        <button id="manualRefresh">手动刷新</button>
+        <select id="refreshSelect">
+          <option value="10000">10 秒</option>
+          <option value="30000" selected>30 秒</option>
+          <option value="60000">60 秒</option>
+        </select>
+        <button id="toggleSound">声音：开</button>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="left-pane">
+        <div id="status" class="status">等待刷新...</div>
+        <div id="summaryBar" class="summary">今日暂无明显信号</div>
+
+        <div class="table-wrapper">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>灯</th>
+                <th>名称</th>
+                <th>代码</th>
+                <th>最新</th>
+                <th>涨跌%</th>
+                <th>量比</th>
+                <th>主力净额(万)</th>
+              </tr>
+            </thead>
+            <tbody id="stockTableBody">
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="right-pane">
+        <div class="panel-title">详情</div>
+        <div id="detailInfo" class="detail-info">
+          <div class="detail-line">点击左侧任意股票查看详情</div>
+        </div>
+        <div class="panel-title">5 日成交量</div>
+        <div class="canvas-wrap">
+          <canvas id="detailVolumeChart" height="160"></canvas>
+        </div>
+      </section>
+    </main>
+
+    <audio id="dingAudio" src="{{ url_for('static', filename='assets/beep.wav') }}"></audio>
+  </div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

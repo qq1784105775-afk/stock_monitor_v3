@@ -1,73 +1,72 @@
+from flask import Flask, request, jsonify
+import requests
+
+app = Flask(__name__)
+
+# ================ 示例函数：你自己的行情接口 ==================
+# 你之前引用了 get_realtime_quote / history5d / moneyflow，这里要补齐
+# 现在给你写个可运行的最简版，你喜欢再换成你自己的数据源
+
+def get_realtime_quote(ts_codes):
+    # ⚠️ 临时假数据（避免你的前端崩溃）
+    data = {}
+    for code in ts_codes:
+        data[code] = {
+            "name": code,
+            "cur": 10.0,
+            "prev": 9.8
+        }
+    return data
+
+def get_history5d(ts_code):
+    # 返回简单的空结构，避免前端报错
+    return {
+        "timestamp": [],
+        "indicators": {"quote": [{"close": [], "volume": []}]}
+    }
+
+def get_moneyflow(ts_codes):
+    return {code: {"main_net_amount": 0} for code in ts_codes}
+
+# ============================================================
+
+@app.route("/")
+def index():
+    return "Backend is running."
+
+# ------- 你前端需要的正式 API ---------
+
 @app.route("/api/snapshot_batch")
 def api_snapshot_batch():
-    ts_codes_str = request.args.get("ts_codes", "").strip()
-    if not ts_codes_str:
-        return jsonify({"ok": True, "data": {}})
+    ts_codes = request.args.get("ts_codes", "")
+    ts_codes = ts_codes.split(",") if ts_codes else []
 
-    codes = [c.strip() for c in ts_codes_str.split(",") if c.strip()]
-    data = {}
+    try:
+        df = get_realtime_quote(ts_codes)
+        return jsonify({"ok": True, "data": df})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
-    for code in codes:
-        try:
-            df = get_realtime_quote(code)
+@app.route("/api/history5d")
+def api_history5d():
+    ts_code = request.args.get("ts_code", "")
+    try:
+        h = get_history5d(ts_code)
+        return jsonify({"ok": True, "data": h})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
-            if df is None or df.empty:
-                continue
+@app.route("/api/moneyflow_latest")
+def api_moneyflow_latest():
+    ts_codes = request.args.get("ts_codes", "")
+    ts_codes = ts_codes.split(",") if ts_codes else []
+    try:
+        mf = get_moneyflow(ts_codes)
+        return jsonify({"ok": True, "data": mf})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
-            row = df.iloc[0]
+# ============================================================
 
-            # 名称
-            name = row.get("name") or row.get("ts_name") or code
-
-            # 昨收
-            prev = None
-            for col in ["pre_close", "preclose", "preClose", "last_close"]:
-                if col in df.columns:
-                    prev = float(row.get(col) or 0)
-                    break
-            if prev is None:
-                prev = float(row.get("close") or row.get("price") or row.get("last") or 0)
-
-            # 最新价
-            cur = None
-            for col in ["price", "last", "close", "trade"]:
-                if col in df.columns:
-                    cur = float(row.get(col) or 0)
-                    break
-            if cur is None:
-                cur = prev
-
-            # 成交量
-            vol = 0.0
-            for col in ["vol", "volume", "amount"]:
-                if col in df.columns:
-                    vol = float(row.get(col) or 0)
-                    break
-
-            # 最高
-            high = None
-            for col in ["high", "high_price"]:
-                if col in df.columns:
-                    high = float(row.get(col) or 0)
-                    break
-
-            # 最低
-            low = None
-            for col in ["low", "low_price"]:
-                if col in df.columns:
-                    low = float(row.get(col) or 0)
-                    break
-
-            data[code] = {
-                "name": name,
-                "prev": prev,
-                "cur": cur,
-                "vol": vol,
-                "high": high,
-                "low": low,
-            }
-
-        except Exception:
-            continue
-
-    return jsonify({"ok": True, "data": data})
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)

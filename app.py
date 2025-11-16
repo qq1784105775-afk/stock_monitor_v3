@@ -1,14 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 import requests
+import os
 
 app = Flask(__name__)
 
-# ================ 示例函数：你自己的行情接口 ==================
-# 你之前引用了 get_realtime_quote / history5d / moneyflow，这里要补齐
-# 现在给你写个可运行的最简版，你喜欢再换成你自己的数据源
+# ===== 工具函数 =====
 
 def get_realtime_quote(ts_codes):
-    # ⚠️ 临时假数据（避免你的前端崩溃）
+    # 示例数据（你也可以替换为自己的实时行情 API）
     data = {}
     for code in ts_codes:
         data[code] = {
@@ -19,28 +18,36 @@ def get_realtime_quote(ts_codes):
     return data
 
 def get_history5d(ts_code):
-    # 返回简单的空结构，避免前端报错
+    # 示例历史 K 线数据
     return {
-        "timestamp": [],
-        "indicators": {"quote": [{"close": [], "volume": []}]}
+        "timestamp": [1, 2, 3, 4, 5],
+        "indicators": {
+            "quote": [{
+                "close": [9.8, 9.9, 10.0, 10.2, 10.3],
+                "volume": [1000, 1200, 1300, 2000, 2500]
+            }]
+        }
     }
 
 def get_moneyflow(ts_codes):
-    return {code: {"main_net_amount": 0} for code in ts_codes}
+    data = {}
+    for c in ts_codes:
+        data[c] = {"main_net_amount": 123456}
+    return data
 
-# ============================================================
+def search_stock(keyword):
+    return [{"ts_code": "600000.SS", "name": "浦发银行"}]
+
+# ====== 路由 ======
 
 @app.route("/")
 def index():
-    return "Backend is running."
-
-# ------- 你前端需要的正式 API ---------
+    return send_from_directory(".", "index.html")
 
 @app.route("/api/snapshot_batch")
 def api_snapshot_batch():
     ts_codes = request.args.get("ts_codes", "")
     ts_codes = ts_codes.split(",") if ts_codes else []
-
     try:
         df = get_realtime_quote(ts_codes)
         return jsonify({"ok": True, "data": df})
@@ -49,10 +56,10 @@ def api_snapshot_batch():
 
 @app.route("/api/history5d")
 def api_history5d():
-    ts_code = request.args.get("ts_code", "")
+    code = request.args.get("ts_code", "")
     try:
-        h = get_history5d(ts_code)
-        return jsonify({"ok": True, "data": h})
+        data = get_history5d(code)
+        return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
@@ -61,12 +68,19 @@ def api_moneyflow_latest():
     ts_codes = request.args.get("ts_codes", "")
     ts_codes = ts_codes.split(",") if ts_codes else []
     try:
-        mf = get_moneyflow(ts_codes)
-        return jsonify({"ok": True, "data": mf})
+        data = get_moneyflow(ts_codes)
+        return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
-# ============================================================
+@app.route("/api/search_stock")
+def api_search_stock():
+    q = request.args.get("q", "")
+    try:
+        data = search_stock(q)
+        return jsonify({"ok": True, "data": data})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000)
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))

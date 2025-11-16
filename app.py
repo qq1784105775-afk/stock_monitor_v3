@@ -1,86 +1,94 @@
-from flask import Flask, request, jsonify, send_from_directory
-import requests
-import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import yfinance as yf
+
 
 app = Flask(__name__)
+CORS(app)
 
-# ===== 工具函数 =====
 
-def get_realtime_quote(ts_codes):
-    # 示例数据（你也可以替换为自己的实时行情 API）
-    data = {}
-    for code in ts_codes:
-        data[code] = {
-            "name": code,
-            "cur": 10.0,
-            "prev": 9.8
-        }
-    return data
-
-def get_history5d(ts_code):
-    # 示例历史 K 线数据
-    return {
-        "timestamp": [1, 2, 3, 4, 5],
-        "indicators": {
-            "quote": [{
-                "close": [9.8, 9.9, 10.0, 10.2, 10.3],
-                "volume": [1000, 1200, 1300, 2000, 2500]
-            }]
-        }
-    }
-
-def get_moneyflow(ts_codes):
-    data = {}
-    for c in ts_codes:
-        data[c] = {"main_net_amount": 123456}
-    return data
-
-def search_stock(keyword):
-    return [{"ts_code": "600000.SS", "name": "浦发银行"}]
-
-# ====== 路由 ======
-
-@app.route("/")
-def index():
-    return send_from_directory(".", "index.html")
-
+# --------------------------------------------------
+#  实时快照批量接口  /api/snapshot_batch
+# --------------------------------------------------
 @app.route("/api/snapshot_batch")
 def api_snapshot_batch():
     ts_codes = request.args.get("ts_codes", "")
     ts_codes = ts_codes.split(",") if ts_codes else []
-    try:
-        df = get_realtime_quote(ts_codes)
-        return jsonify({"ok": True, "data": df})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
 
-@app.route("/api/history5d")
-def api_history5d():
-    code = request.args.get("ts_code", "")
+    data = {}
     try:
-        data = get_history5d(code)
+        for code in ts_codes:
+            ticker = yf.Ticker(code.replace(".SS", ".SS").replace(".SZ", ".SZ"))
+            info = ticker.info
+
+            data[code] = {
+                "name": info.get("shortName"),
+                "cur": info.get("regularMarketPrice"),
+                "prev": info.get("regularMarketPreviousClose")
+            }
+
         return jsonify({"ok": True, "data": data})
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)})
 
+
+# --------------------------------------------------
+#  5日历史数据  /api/history5d
+# --------------------------------------------------
+@app.route("/api/history5d")
+def api_history5d():
+    ts_code = request.args.get("ts_code", "")
+    if not ts_code:
+        return jsonify({"ok": False, "error": "missing ts_code"})
+
+    try:
+        ticker = yf.Ticker(ts_code)
+        hist = ticker.history(period="5d", interval="1d")
+
+        return jsonify({
+            "ok": True,
+            "data": {
+                "timestamp": [int(t.timestamp()) for t in hist.index],
+                "indicators": {
+                    "quote": [{
+                        "close": list(hist["Close"]),
+                        "volume": list(hist["Volume"]),
+                    }]
+                }
+            }
+        })
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# --------------------------------------------------
+#  主力资金接口（Mock）   /api/moneyflow_latest
+# --------------------------------------------------
 @app.route("/api/moneyflow_latest")
 def api_moneyflow_latest():
     ts_codes = request.args.get("ts_codes", "")
     ts_codes = ts_codes.split(",") if ts_codes else []
-    try:
-        data = get_moneyflow(ts_codes)
-        return jsonify({"ok": True, "data": data})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    data = {}
 
-@app.route("/api/search_stock")
-def api_search_stock():
-    q = request.args.get("q", "")
-    try:
-        data = search_stock(q)
-        return jsonify({"ok": True, "data": data})
-    except Exception as e:
-        return jsonify({"ok": False, "error": str(e)})
+    # 这里你可以换成真实数据源
+    for code in ts_codes:
+        data[code] = {
+            "main_net_amount": 0
+        }
 
+    return jsonify({"ok": True, "data": data})
+
+
+# --------------------------------------------------
+# 首页路由
+# --------------------------------------------------
+@app.route("/")
+def index():
+    return "Backend Running OK", 200
+
+
+# --------------------------------------------------
+# Render 启动要求
+# --------------------------------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    app.run(host="0.0.0.0", port=10000)

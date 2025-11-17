@@ -1,1 +1,3 @@
-TUSHARE_TOKEN = "3df89ae83a4caf8a436252593f35d57c8aff8cfa404f139f975710ba"
+import os
+
+TUSHARE_TOKEN = os.getenv("TUSHARE_TOKEN", "")

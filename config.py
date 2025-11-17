@@ -1,1 +1,1 @@
-TUSHARE_TOKEN = "本地调试时可以在这里填入你的 Tushare Pro Token；线上 Render 推荐用环境变量 TUSHARE_TOKEN。"
+TUSHARE_TOKEN = "3df89ae83a4caf8a436252593f35d57c8aff8cfa404f139f975710ba"
